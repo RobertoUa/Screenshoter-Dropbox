@@ -27,23 +27,14 @@ import com.dropbox.client2.session.AppKeyPair;
 import com.dropbox.client2.session.Session.AccessType;
 import com.dropbox.client2.session.WebAuthSession;
 
-/**
- */
 public class Main {
 	//	private static long start = System.nanoTime();
 
-	/**
-	 * Method main.
-	 * @param args String[]
-	 */
 	public static void main(String args[]) {
 		new Main();
 
 	}
 
-	/**
-	 * Constructor for Main.
-	 */
 	public Main() {
 		Configuration cfg = new Configuration();
 		Toolkit toolkit = Toolkit.getDefaultToolkit();
@@ -52,12 +43,6 @@ public class Main {
 
 	}
 
-	/**
-	 * Method upload.
-	 * @param inputStream ByteArrayInputStream
-	 * @param toolkit Toolkit
-	 * @param cfg Configuration
-	 */
 	private void upload(ByteArrayInputStream inputStream, Toolkit toolkit,
 			Configuration cfg) {
 
@@ -98,11 +83,6 @@ public class Main {
 
 	}
 
-	/**
-	 * Method capture.
-	 * @param toolkit Toolkit
-	 * @return ByteArrayInputStream
-	 */
 	private ByteArrayInputStream capture(Toolkit toolkit) {
 		ByteArrayInputStream input = null;
 
@@ -124,9 +104,6 @@ public class Main {
 
 	}
 
-	/**
-	 * Method playSound.
-	 */
 	public void playSound() {
 		Executors.newSingleThreadExecutor().execute(new Thread(new Runnable() {
 			public void run() {

@@ -20,46 +20,15 @@ import com.dropbox.client2.session.Session.AccessType;
 import com.dropbox.client2.session.WebAuthSession;
 import com.dropbox.client2.session.WebAuthSession.WebAuthInfo;
 
-/**
- */
 public class Configuration {
-	/**
-	 * Field properties.
-	 */
 	private Properties properties = new Properties();
-	/**
-	 * Field cfgPath.
-	 */
 	private String cfgPath;
-	/**
-	 * Field cfgFilename.
-	 * (value is ""cfg.xml"")
-	 */
 	private static final String cfgFilename = "cfg.xml";
-	/**
-	 * Field APP_KEY.
-	 * (value is ""APP_KEY"")
-	 */
 	private static final String APP_KEY = "APP_KEY";
-	/**
-	 * Field APP_SECRET.
-	 * (value is ""APP_SECRET"")
-	 */
 	private static final String APP_SECRET = "APP_SECRET";
-	/**
-	 * Field ACCESS_KEY.
-	 * (value is ""ACCESS_KEY"")
-	 */
 	private static final String ACCESS_KEY = "ACCESS_KEY";
-	/**
-	 * Field ACCESS_SECRET.
-	 * (value is ""ACCESS_SECRET"")
-	 */
 	private static final String ACCESS_SECRET = "ACCESS_SECRET";
 
-	/**
-	 * Constructor for Configuration.
-	 */
 	public Configuration() {
 		cfgPath = System.getProperties().getProperty("user.home")
 				+ File.separator + ".DBCfg";
@@ -67,10 +36,6 @@ public class Configuration {
 		loadCFG(file);
 	}
 
-	/**
-	 * Method loadCFG.
-	 * @param file File
-	 */
 	private void loadCFG(File file) {
 		checkCfg(file);
 		try (BufferedInputStream input = new BufferedInputStream(
@@ -90,10 +55,6 @@ public class Configuration {
 
 	}
 
-	/**
-	 * Method storeAppKeyPair.
-	 * @param file File
-	 */
 	private void storeAppKeyPair(File file) {
 		String appKey = JOptionPane.showInputDialog("Enter your " + APP_KEY);
 		String appSecret = JOptionPane.showInputDialog("Enter your "
@@ -120,12 +81,6 @@ public class Configuration {
 
 	}
 
-	/**
-	 * Method saveConfiguration.
-	 * @param key String
-	 * @param value String
-	 * @param file File
-	 */
 	private void saveConfiguration(String key, String value, File file) {
 		try (FileOutputStream write = new FileOutputStream(file)) {
 			properties.setProperty(key, value);
@@ -136,10 +91,6 @@ public class Configuration {
 
 	}
 
-	/**
-	 * Method checkCfg.
-	 * @param file File
-	 */
 	private void checkCfg(File file) {
 		boolean exist = file.exists();
 		if (!exist) {
@@ -152,34 +103,18 @@ public class Configuration {
 		}
 	}
 
-	/**
-	 * Method getAPP_KEY.
-	 * @return String
-	 */
 	public String getAPP_KEY() {
 		return properties.getProperty(APP_KEY);
 	}
 
-	/**
-	 * Method getAPP_SECRET.
-	 * @return String
-	 */
 	public String getAPP_SECRET() {
 		return properties.getProperty(APP_SECRET);
 	}
 
-	/**
-	 * Method getACCESS_KEY.
-	 * @return String
-	 */
 	public String getACCESS_KEY() {
 		return properties.getProperty(ACCESS_KEY);
 	}
 
-	/**
-	 * Method getACCESS_SECRET.
-	 * @return String
-	 */
 	public String getACCESS_SECRET() {
 		return properties.getProperty(ACCESS_SECRET);
 	}

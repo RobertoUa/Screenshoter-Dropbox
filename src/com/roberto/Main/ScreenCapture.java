@@ -20,8 +20,6 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.event.MouseInputListener;
 
-/**
- */
 public class ScreenCapture extends JPanel implements KeyListener,
 		MouseInputListener, Callable<BufferedImage> {
 
@@ -157,7 +155,7 @@ public class ScreenCapture extends JPanel implements KeyListener,
 		while (!finished) {
 			repaint();
 			try {
-				Thread.sleep(10);
+				Thread.sleep(10); // 1000 / 10 = 100 Frames per second
 			} catch (InterruptedException e) {
 				JOptionPane.showMessageDialog(null, e.getMessage());
 			}
