@@ -28,6 +28,7 @@ import com.dropbox.client2.session.AccessTokenPair;
 import com.dropbox.client2.session.AppKeyPair;
 import com.dropbox.client2.session.Session.AccessType;
 import com.dropbox.client2.session.WebAuthSession;
+import com.roberto.capture.ScreenCapture;
 
 public class Main {
 	public enum Keys {
@@ -58,7 +59,7 @@ public class Main {
 
 	}
 
-	private boolean upload(ByteArrayInputStream inputStream, Configuration cfg) {
+	private boolean upload(ByteArrayInputStream imgBytes, Configuration cfg) {
 		boolean success = false;
 		final String currTime = Calendar.getInstance().getTime().toString();
 		final String filename = "/Screenshots/" + currTime + ".png";
@@ -72,20 +73,19 @@ public class Main {
 		DropboxAPI<WebAuthSession> client = new DropboxAPI<>(session);
 
 		try {
-			final int size = inputStream.available();
-			client.putFile(filename, inputStream, size, null, null);
+			final int size = imgBytes.available();
+			client.putFile(filename, imgBytes, size, null, null);
 			final String link = client.share(filename).url;
 			final StringSelection selection = new StringSelection(link);
 			final Toolkit toolkit = Toolkit.getDefaultToolkit();
 			toolkit.getSystemClipboard().setContents(selection, null);
 			success = true;
 		} catch (DropboxException e) {
-			cfg.loadCfg(0);
-			upload(inputStream, cfg);
-			success = false;
+			cfg.loadCfg();
+			upload(imgBytes, cfg);
 		} finally {
 			try {
-				inputStream.close();
+				imgBytes.close();
 			} catch (IOException e) {
 				showMessageDialog(null, e.getMessage());
 			}
@@ -114,7 +114,6 @@ public class Main {
 		return input;
 
 	}
-
 	public final void playSound() {
 		Executors.newSingleThreadExecutor().execute(new Thread(new Runnable() {
 			public void run() {
@@ -131,7 +130,7 @@ public class Main {
 			}
 		}));
 		try {
-			Thread.sleep(3000);
+			Thread.sleep(3000);//so program wont halt while sound is playing
 			System.exit(0);
 		} catch (InterruptedException e) {
 			showMessageDialog(null, e.getMessage());

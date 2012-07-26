@@ -39,33 +39,24 @@ public class Configuration {
 				+ File.separator + ".DBCfg";
 
 		file = new File(cfgPath + File.separator + cfgFilename);
-		loadCfg(0);
+		loadCfg();
 	}
 
-	public void loadCfg(int recurCalls) {
-		if (recurCalls >= 2) {
-			int option = JOptionPane.showConfirmDialog(null,
-					"Do you want to exit?", "", JOptionPane.YES_NO_OPTION);
-			if (option == 0) {
-				file.delete();
-				System.exit(0);
-			}
-		}
-
+	public void loadCfg() {
 		checkCfg();
 		try (BufferedInputStream input = new BufferedInputStream(
 				new FileInputStream(file))) {
 			properties.loadFromXML(input);
 		} catch (IOException e) {
 			storeAppKeyPair();
-			loadCfg(recurCalls + 1);
+			loadCfg();
 		}
 		if (!properties.containsKey(APP_KEY.toString())
 				|| !properties.containsKey(APP_SECRET.toString())
 				|| !properties.containsKey(ACCESS_KEY.toString())
 				|| !properties.containsKey(ACCESS_SECRET.toString())) {
 			storeAppKeyPair();
-			loadCfg(recurCalls + 1);
+			loadCfg();
 		}
 
 	}
@@ -123,14 +114,18 @@ public class Configuration {
 		}
 	}
 
+	@SuppressWarnings("serial")
 	public Map<Keys, String> getKeysMap() {
-		return new HashMap<Keys, String>() {{
+		return new HashMap<Keys, String>() {
+			{
 				put(APP_KEY, properties.getProperty(APP_KEY.toString()));
 				put(APP_SECRET, properties.getProperty(APP_SECRET.toString()));
 				put(ACCESS_KEY, properties.getProperty(ACCESS_KEY.toString()));
-				put(ACCESS_SECRET, properties.getProperty(ACCESS_SECRET.toString()));
+				put(ACCESS_SECRET,
+						properties.getProperty(ACCESS_SECRET.toString()));
 
-			}};
+			}
+		};
 	}
 
 }

@@ -1,4 +1,4 @@
-package com.roberto.main;
+package com.roberto.capture;
 
 import java.awt.AWTException;
 import java.awt.Color;
@@ -21,16 +21,6 @@ import static java.awt.Toolkit.getDefaultToolkit;
 public class ScreenCapture extends ScreenCaptureAdapter {
 
 	private static final long serialVersionUID = 1L;
-
-	private JDialog frame;
-	private final Color selection = new Color(140, 140, 140, 100);
-	private BufferedImage image;
-
-	private boolean finished = false;
-	private int startY, startX;
-	private int x, y;
-	private int width, height;
-	private int endX, endY;
 
 	public ScreenCapture() {
 		final Dimension resolution = getDefaultToolkit().getScreenSize();
@@ -75,6 +65,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 		g2.setColor(Color.WHITE);
 		g2.drawRect(x, y, width, height);
 		g2.setColor(Color.GRAY);
+		//Those are just offset values
 		g2.drawString(String.valueOf(width), x + width + 10, y + height + 15);
 		g2.drawString(String.valueOf(height), x + width + 10, y + height + 25);
 		g2.dispose();
