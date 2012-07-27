@@ -1,5 +1,9 @@
 package com.roberto.main;
 
+import static com.roberto.main.Main.Keys.ACCESS_KEY;
+import static com.roberto.main.Main.Keys.ACCESS_SECRET;
+import static com.roberto.main.Main.Keys.APP_KEY;
+import static com.roberto.main.Main.Keys.APP_SECRET;
 import static javax.swing.JOptionPane.showInputDialog;
 import static javax.swing.JOptionPane.showMessageDialog;
 
@@ -15,8 +19,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.swing.JOptionPane;
-
 import com.dropbox.client2.exception.DropboxException;
 import com.dropbox.client2.session.AccessTokenPair;
 import com.dropbox.client2.session.AppKeyPair;
@@ -26,13 +28,12 @@ import com.dropbox.client2.session.WebAuthSession;
 import com.dropbox.client2.session.WebAuthSession.WebAuthInfo;
 import com.roberto.main.Main.Keys;
 
-import static com.roberto.main.Main.Keys.*;
-
-public class Configuration {
+public class Configuration{
+	
 	private Properties properties = new Properties();
 	private String cfgPath;
 	private File file;
-	private static final String cfgFilename = "cfg.xml";
+	private static final String cfgFilename = "cfg.ini";
 
 	public Configuration() {
 		cfgPath = System.getProperties().getProperty("user.home")
@@ -46,11 +47,12 @@ public class Configuration {
 		checkCfg();
 		try (BufferedInputStream input = new BufferedInputStream(
 				new FileInputStream(file))) {
-			properties.loadFromXML(input);
+			properties.load(input);
 		} catch (IOException e) {
 			storeAppKeyPair();
 			loadCfg();
 		}
+	
 		if (!properties.containsKey(APP_KEY.toString())
 				|| !properties.containsKey(APP_SECRET.toString())
 				|| !properties.containsKey(ACCESS_KEY.toString())
@@ -58,6 +60,7 @@ public class Configuration {
 			storeAppKeyPair();
 			loadCfg();
 		}
+	
 
 	}
 
@@ -95,7 +98,7 @@ public class Configuration {
 	private void saveConfiguration(Keys key, String value) {
 		try (FileOutputStream write = new FileOutputStream(file)) {
 			properties.setProperty(key.toString(), value);
-			properties.storeToXML(write, "DONT TOUCH THEM");
+			properties.store(write, "DONT TOUCH THEM");
 		} catch (IOException e) {
 			showMessageDialog(null, e.getMessage());
 		}

@@ -35,16 +35,14 @@ public class Main {
 		APP_KEY, APP_SECRET, ACCESS_KEY, ACCESS_SECRET
 	}
 
+	//long start = System.nanoTime();	
 	private String appKey, appSecret, accessKey, accessSecret;
 
 	public static void main(String args[]) {
-		//long start = System.nanoTime();	
 
 		new Main();
-
 		//	double end = (System.nanoTime() - start) / 1000000.0;
 		//	System.out.printf("%.2f%s", end, " ms\n");
-
 	}
 
 	public Main() {
@@ -61,8 +59,8 @@ public class Main {
 
 	private boolean upload(ByteArrayInputStream imgBytes, Configuration cfg) {
 		boolean success = false;
-		final String currTime = Calendar.getInstance().getTime().toString();
-		final String filename = "/Screenshots/" + currTime + ".png";
+		String currTime = Calendar.getInstance().getTime().toString();
+		String filename = "/Screenshots/" + currTime + ".png";
 
 		AppKeyPair appKeys = new AppKeyPair(appKey, appSecret);
 
@@ -73,11 +71,11 @@ public class Main {
 		DropboxAPI<WebAuthSession> client = new DropboxAPI<>(session);
 
 		try {
-			final int size = imgBytes.available();
+			int size = imgBytes.available();
 			client.putFile(filename, imgBytes, size, null, null);
-			final String link = client.share(filename).url;
-			final StringSelection selection = new StringSelection(link);
-			final Toolkit toolkit = Toolkit.getDefaultToolkit();
+			String link = client.share(filename).url;
+			StringSelection selection = new StringSelection(link);
+			Toolkit toolkit = Toolkit.getDefaultToolkit();
 			toolkit.getSystemClipboard().setContents(selection, null);
 			success = true;
 		} catch (DropboxException e) {
@@ -101,6 +99,7 @@ public class Main {
 
 			ScreenCapture selecting = new ScreenCapture();
 			ExecutorService exec = Executors.newSingleThreadExecutor();
+
 			BufferedImage image = exec.submit(selecting).get();
 
 			ImageIO.write(image, "png", output);
@@ -114,10 +113,11 @@ public class Main {
 		return input;
 
 	}
-	public final void playSound() {
+
+	public void playSound() {
 		Executors.newSingleThreadExecutor().execute(new Thread(new Runnable() {
 			public void run() {
-				String soundName = "woohoo.wav";
+				String soundName = "notify.wav";
 				URL is = getClass().getResource(soundName);
 				try (AudioInputStream ais = AudioSystem.getAudioInputStream(is)) {
 					Clip clip = AudioSystem.getClip();

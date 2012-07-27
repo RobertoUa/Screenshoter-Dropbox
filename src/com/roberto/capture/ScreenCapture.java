@@ -22,6 +22,17 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 
 	private static final long serialVersionUID = 1L;
 
+	private JDialog frame;
+	private BufferedImage image;
+	private final Color selection = new Color(140, 140, 140, 100);
+
+	private int startY, startX;
+	private int x, y;
+	private int width, height;
+	private int endX, endY;
+
+	private boolean finished;
+
 	public ScreenCapture() {
 		final Dimension resolution = getDefaultToolkit().getScreenSize();
 		final Rectangle res = new Rectangle(resolution);
