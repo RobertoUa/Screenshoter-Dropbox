@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URL;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -39,10 +40,8 @@ public class Main {
 	private String appKey, appSecret, accessKey, accessSecret;
 
 	public static void main(String args[]) {
-
 		new Main();
-		//	double end = (System.nanoTime() - start) / 1000000.0;
-		//	System.out.printf("%.2f%s", end, " ms\n");
+		//	System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
 	}
 
 	public Main() {
@@ -54,13 +53,13 @@ public class Main {
 		} else {
 			showMessageDialog(null, "A screenshot wasn't uploaded");
 		}
-
 	}
 
 	private boolean upload(ByteArrayInputStream imgBytes, Configuration cfg) {
 		boolean success = false;
-		String currTime = Calendar.getInstance().getTime().toString();
-		String filename = "/Screenshots/" + currTime + ".png";
+		String currTime = new SimpleDateFormat("dd-MMM-HH:mm:ss").format(
+				Calendar.getInstance().getTime()).toString();
+		String filename = "/Scrn/" + currTime + ".png";
 
 		AppKeyPair appKeys = new AppKeyPair(appKey, appSecret);
 
@@ -71,16 +70,19 @@ public class Main {
 		DropboxAPI<WebAuthSession> client = new DropboxAPI<>(session);
 
 		try {
+			long uid = client.accountInfo().uid;
 			int size = imgBytes.available();
-			client.putFile(filename, imgBytes, size, null, null);
-			String link = client.share(filename).url;
-			StringSelection selection = new StringSelection(link);
-			Toolkit toolkit = Toolkit.getDefaultToolkit();
-			toolkit.getSystemClipboard().setContents(selection, null);
+			client.putFile("/Public" + filename, imgBytes, size, null, null);
+			String url = "http://dl.dropbox.com/u/" + uid + filename;
+
+			StringSelection selection = new StringSelection(url.toString());
+			Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
 			success = true;
 		} catch (DropboxException e) {
+			System.out.println("not done");
 			cfg.loadCfg();
 			upload(imgBytes, cfg);
+			e.printStackTrace();
 		} finally {
 			try {
 				imgBytes.close();
@@ -123,8 +125,7 @@ public class Main {
 					Clip clip = AudioSystem.getClip();
 					clip.open(ais);
 					clip.start();
-				} catch (IOException | LineUnavailableException
-						| UnsupportedAudioFileException e) {
+				} catch (IOException | LineUnavailableException | UnsupportedAudioFileException e) {
 					showMessageDialog(null, e.getMessage());
 				}
 			}
@@ -145,4 +146,5 @@ public class Main {
 		accessKey = keys.get(Keys.ACCESS_KEY);
 		accessSecret = keys.get(Keys.ACCESS_SECRET);
 	}
+
 }
