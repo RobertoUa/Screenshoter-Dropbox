@@ -8,7 +8,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Map;
@@ -17,11 +16,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.imageio.ImageIO;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
-import javax.sound.sampled.LineUnavailableException;
-import javax.sound.sampled.UnsupportedAudioFileException;
+
+import javazoom.jl.decoder.JavaLayerException;
+import javazoom.jl.player.Player;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.exception.DropboxException;
@@ -33,36 +30,38 @@ import com.roberto.capture.ScreenCapture;
 
 public class Main {
 	public enum Keys {
-		APP_KEY, APP_SECRET, ACCESS_KEY, ACCESS_SECRET
+		APP_KEY, APP_SECRET, ACCESS_KEY, ACCESS_SECRET, UID
 	}
 
-	//long start = System.nanoTime();	
+	//private static long start = System.nanoTime();
 	private String appKey, appSecret, accessKey, accessSecret;
+	private String uid;
+	private Thread copyAndNotify;
 
-	public static void main(String args[]) {
+	public static void main(String args[]) throws InterruptedException {
 		new Main();
-		//	System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
+		//	System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms55\n");
 	}
 
-	public Main() {
+	private Main() throws InterruptedException {
 		final Configuration cfg = new Configuration();
 		loadKeys(cfg);
-		boolean success = upload(capture(), cfg);
-		if (success) {
-			playSound();
-		} else {
-			showMessageDialog(null, "A screenshot wasn't uploaded");
-		}
+
+		upload(capture(), cfg);
+
+		copyAndNotify.join();
+		System.exit(0); // we are done here
 	}
 
-	private boolean upload(ByteArrayInputStream imgBytes, Configuration cfg) {
-		boolean success = false;
-		String currTime = new SimpleDateFormat("dd-MMM-HH:mm:ss").format(
+	private final void upload(ByteArrayInputStream imgBytes, Configuration cfg) {
+		final String currTime = new SimpleDateFormat("dd-MMM-HH:mm:ss").format(
 				Calendar.getInstance().getTime()).toString();
-		String filename = "/Scrn/" + currTime + ".png";
 
+		final String filename = "/Scrn/" + currTime + ".png";
+		final String url = "http://dl.dropbox.com/u/" + uid + filename;
+
+		copyUrlAndNotify(url);
 		AppKeyPair appKeys = new AppKeyPair(appKey, appSecret);
-
 		WebAuthSession session = new WebAuthSession(appKeys, AccessType.DROPBOX);
 		AccessTokenPair acc = new AccessTokenPair(accessKey, accessSecret);
 
@@ -70,28 +69,12 @@ public class Main {
 		DropboxAPI<WebAuthSession> client = new DropboxAPI<>(session);
 
 		try {
-			long uid = client.accountInfo().uid;
 			int size = imgBytes.available();
 			client.putFile("/Public" + filename, imgBytes, size, null, null);
-			String url = "http://dl.dropbox.com/u/" + uid + filename;
-
-			StringSelection selection = new StringSelection(url.toString());
-			Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
-			success = true;
 		} catch (DropboxException e) {
-			System.out.println("not done");
 			cfg.loadCfg();
 			upload(imgBytes, cfg);
-			e.printStackTrace();
-		} finally {
-			try {
-				imgBytes.close();
-			} catch (IOException e) {
-				showMessageDialog(null, e.getMessage());
-			}
-
 		}
-		return success;
 	}
 
 	private final ByteArrayInputStream capture() {
@@ -101,14 +84,11 @@ public class Main {
 
 			ScreenCapture selecting = new ScreenCapture();
 			ExecutorService exec = Executors.newSingleThreadExecutor();
-
 			BufferedImage image = exec.submit(selecting).get();
-
-			ImageIO.write(image, "png", output);
 			exec.shutdown();
+			ImageIO.write(image, "png", output);
 
 			input = new ByteArrayInputStream(output.toByteArray());
-
 		} catch (IOException | InterruptedException | ExecutionException e) {
 			showMessageDialog(null, e.getMessage());
 		}
@@ -116,26 +96,25 @@ public class Main {
 
 	}
 
-	public void playSound() {
-		Executors.newSingleThreadExecutor().execute(new Thread(new Runnable() {
+	/** Copies shorten url(or long one if url shrunking fails) to clipboard, notifies a user and terminates the programm*/
+	private void copyUrlAndNotify(final String url) {
+		copyAndNotify = new Thread(new Runnable() {
+			@Override
 			public void run() {
-				String soundName = "notify.wav";
-				URL is = getClass().getResource(soundName);
-				try (AudioInputStream ais = AudioSystem.getAudioInputStream(is)) {
-					Clip clip = AudioSystem.getClip();
-					clip.open(ais);
-					clip.start();
-				} catch (IOException | LineUnavailableException | UnsupportedAudioFileException e) {
+				String shortUrl = URLshortener.shorten(url);
+				StringSelection selection = new StringSelection(shortUrl);
+				Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+				try {
+					String soundName = "/notify.mp3";
+					Player player = new Player(getClass().getResourceAsStream(soundName));
+					player.play();
+				} catch (JavaLayerException e) {
 					showMessageDialog(null, e.getMessage());
 				}
 			}
-		}));
-		try {
-			Thread.sleep(3000);//so program wont halt while sound is playing
-			System.exit(0);
-		} catch (InterruptedException e) {
-			showMessageDialog(null, e.getMessage());
-		}
+		});
+		copyAndNotify.start();
+
 	}
 
 	private void loadKeys(Configuration cfg) {
@@ -145,6 +124,7 @@ public class Main {
 		appSecret = keys.get(Keys.APP_SECRET);
 		accessKey = keys.get(Keys.ACCESS_KEY);
 		accessSecret = keys.get(Keys.ACCESS_SECRET);
+		uid = keys.get(Keys.UID);
 	}
 
 }

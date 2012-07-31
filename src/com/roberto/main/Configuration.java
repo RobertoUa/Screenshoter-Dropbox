@@ -4,6 +4,7 @@ import static com.roberto.main.Main.Keys.ACCESS_KEY;
 import static com.roberto.main.Main.Keys.ACCESS_SECRET;
 import static com.roberto.main.Main.Keys.APP_KEY;
 import static com.roberto.main.Main.Keys.APP_SECRET;
+import static com.roberto.main.Main.Keys.UID;
 import static javax.swing.JOptionPane.showInputDialog;
 import static javax.swing.JOptionPane.showMessageDialog;
 
@@ -19,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.exception.DropboxException;
 import com.dropbox.client2.session.AccessTokenPair;
 import com.dropbox.client2.session.AppKeyPair;
@@ -28,16 +30,15 @@ import com.dropbox.client2.session.WebAuthSession;
 import com.dropbox.client2.session.WebAuthSession.WebAuthInfo;
 import com.roberto.main.Main.Keys;
 
-public class Configuration{
-	
+public class Configuration {
+
 	private Properties properties = new Properties();
 	private String cfgPath;
 	private File file;
 	private static final String cfgFilename = "cfg.ini";
 
 	public Configuration() {
-		cfgPath = System.getProperties().getProperty("user.home")
-				+ File.separator + ".DBCfg";
+		cfgPath = System.getProperties().getProperty("user.home") + File.separator + ".DBCfg";
 
 		file = new File(cfgPath + File.separator + cfgFilename);
 		loadCfg();
@@ -45,23 +46,21 @@ public class Configuration{
 
 	public void loadCfg() {
 		checkCfg();
-		try (BufferedInputStream input = new BufferedInputStream(
-				new FileInputStream(file))) {
+		try (BufferedInputStream input = new BufferedInputStream(new FileInputStream(file))) {
 			properties.load(input);
 		} catch (IOException e) {
 			storeAppKeyPair();
 			loadCfg();
 		}
-	
+
 		if (!properties.containsKey(APP_KEY.toString())
 				|| !properties.containsKey(APP_SECRET.toString())
 				|| !properties.containsKey(ACCESS_KEY.toString())
-				|| !properties.containsKey(ACCESS_SECRET.toString())) {
+				|| !properties.containsKey(ACCESS_SECRET.toString())
+				|| !properties.containsKey(UID.toString())) {
 			storeAppKeyPair();
 			loadCfg();
 		}
-	
-
 	}
 
 	private void storeAppKeyPair() {
@@ -82,13 +81,17 @@ public class Configuration{
 			RequestTokenPair pair = authInfo.requestTokenPair;
 			String url = authInfo.url;
 			Desktop.getDesktop().browse(new URL(url).toURI());
-			showMessageDialog(null,
-					"Press ok to continue once you have authenticated.");
+			showMessageDialog(null, "Press ok to continue once you have authenticated.");
 			session.retrieveWebAccessToken(pair);
 
 			AccessTokenPair tokens = session.getAccessTokenPair();
+			DropboxAPI<WebAuthSession> client = new DropboxAPI<>(session);
+
 			saveConfiguration(ACCESS_KEY, tokens.key);
 			saveConfiguration(ACCESS_SECRET, tokens.secret);
+
+			String uid = String.valueOf(client.accountInfo().uid);
+			saveConfiguration(UID, uid);
 		} catch (DropboxException | IOException | URISyntaxException e) {
 			showMessageDialog(null, e.getMessage());
 		}
@@ -118,17 +121,16 @@ public class Configuration{
 	}
 
 	@SuppressWarnings("serial")
-	public Map<Keys, String> getKeysMap() {
-		return new HashMap<Keys, String>() {
+	public final Map<Keys, String> getKeysMap() {
+		return new HashMap<Keys, String>(5) {
 			{
 				put(APP_KEY, properties.getProperty(APP_KEY.toString()));
 				put(APP_SECRET, properties.getProperty(APP_SECRET.toString()));
 				put(ACCESS_KEY, properties.getProperty(ACCESS_KEY.toString()));
-				put(ACCESS_SECRET,
-						properties.getProperty(ACCESS_SECRET.toString()));
+				put(ACCESS_SECRET, properties.getProperty(ACCESS_SECRET.toString()));
+				put(UID, properties.getProperty(UID.toString()));
 
 			}
 		};
 	}
-
 }

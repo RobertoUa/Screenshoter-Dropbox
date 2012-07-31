@@ -16,7 +16,6 @@ import java.awt.image.BufferedImage;
 
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
-import static java.awt.Toolkit.getDefaultToolkit;
 
 public class ScreenCapture extends ScreenCaptureAdapter {
 
@@ -34,7 +33,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 	private boolean finished;
 
 	public ScreenCapture() {
-		final Dimension resolution = getDefaultToolkit().getScreenSize();
+		final Dimension resolution = Toolkit.getDefaultToolkit().getScreenSize();
 		final Rectangle res = new Rectangle(resolution);
 		try {
 			image = new Robot().createScreenCapture(res);
@@ -79,6 +78,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 		//Those are just offset values
 		g2.drawString(String.valueOf(width), x + width + 10, y + height + 15);
 		g2.drawString(String.valueOf(height), x + width + 10, y + height + 25);
+
 		g2.dispose();
 		Toolkit.getDefaultToolkit().sync();
 
@@ -87,6 +87,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 	@Override
 	public void mousePressed(MouseEvent e) {
 		if (e.getButton() == MouseEvent.BUTTON3) {
+			frame.dispose();
 			System.exit(0);
 		}
 		startX = e.getX();
@@ -117,11 +118,11 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 		if (e.getKeyCode() == KeyEvent.VK_SPACE) {
 			startX = endX;
 			startY = endY;
-		} else if (e.getKeyCode() == KeyEvent.VK_CONTROL
-				|| e.getKeyCode() == KeyEvent.VK_ENTER
+		} else if (e.getKeyCode() == KeyEvent.VK_CONTROL || e.getKeyCode() == KeyEvent.VK_ENTER
 				|| e.getKeyCode() == KeyEvent.VK_F) {
 			finished = true;
 		} else {
+			frame.dispose();
 			System.exit(0);
 		}
 
@@ -132,11 +133,12 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 		while (!finished) {
 			repaint();
 			try {
-				Thread.sleep(10); // 1000 / 10 = 100 Frames per second
+				Thread.sleep(15); // 1000 / 15 = about 60 Frames per second
 			} catch (InterruptedException e) {
 				JOptionPane.showMessageDialog(null, e.getMessage());
 			}
 		}
+		frame.setVisible(false);
 		frame.dispose();
 		return image;
 	}
