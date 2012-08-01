@@ -5,8 +5,6 @@ import static com.roberto.main.Main.Keys.ACCESS_SECRET;
 import static com.roberto.main.Main.Keys.APP_KEY;
 import static com.roberto.main.Main.Keys.APP_SECRET;
 import static com.roberto.main.Main.Keys.UID;
-import static javax.swing.JOptionPane.showInputDialog;
-import static javax.swing.JOptionPane.showMessageDialog;
 
 import java.awt.Desktop;
 import java.io.BufferedInputStream;
@@ -14,11 +12,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Properties;
+
+import javax.swing.JOptionPane;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.exception.DropboxException;
@@ -45,8 +47,11 @@ public class Configuration {
 	}
 
 	public void loadCfg() {
+
 		checkCfg();
-		try (BufferedInputStream input = new BufferedInputStream(new FileInputStream(file))) {
+
+		try { //TODO try-with-resources
+			BufferedInputStream input = new BufferedInputStream(new FileInputStream(file));
 			properties.load(input);
 		} catch (IOException e) {
 			storeAppKeyPair();
@@ -64,8 +69,8 @@ public class Configuration {
 	}
 
 	private void storeAppKeyPair() {
-		String appKey = showInputDialog("Enter your " + APP_KEY);
-		String appSecret = showInputDialog("Enter your " + APP_SECRET);
+		String appKey = JOptionPane.showInputDialog("Enter your " + APP_KEY);
+		String appSecret = JOptionPane.showInputDialog("Enter your " + APP_SECRET);
 
 		if (appKey == null || appSecret == null) {
 			file.delete();
@@ -81,29 +86,37 @@ public class Configuration {
 			RequestTokenPair pair = authInfo.requestTokenPair;
 			String url = authInfo.url;
 			Desktop.getDesktop().browse(new URL(url).toURI());
-			showMessageDialog(null, "Press ok to continue once you have authenticated.");
+			JOptionPane
+					.showMessageDialog(null, "Press ok to continue once you have authenticated.");
 			session.retrieveWebAccessToken(pair);
 
 			AccessTokenPair tokens = session.getAccessTokenPair();
-			DropboxAPI<WebAuthSession> client = new DropboxAPI<>(session);
+			DropboxAPI<WebAuthSession> client = new DropboxAPI<WebAuthSession>(session);
 
 			saveConfiguration(ACCESS_KEY, tokens.key);
 			saveConfiguration(ACCESS_SECRET, tokens.secret);
 
 			String uid = String.valueOf(client.accountInfo().uid);
 			saveConfiguration(UID, uid);
-		} catch (DropboxException | IOException | URISyntaxException e) {
-			showMessageDialog(null, e.getMessage());
+		} catch (DropboxException e) {
+			Main.showExceptionInfo(e);
+		} catch (MalformedURLException e) {
+			Main.showExceptionInfo(e);
+		} catch (IOException e) {
+			Main.showExceptionInfo(e);
+		} catch (URISyntaxException e) {
+			Main.showExceptionInfo(e);
 		}
 
 	}
 
 	private void saveConfiguration(Keys key, String value) {
-		try (FileOutputStream write = new FileOutputStream(file)) {
+		try { //TODO try-with-resources
+			FileOutputStream write = new FileOutputStream(file);
 			properties.setProperty(key.toString(), value);
 			properties.store(write, "DONT TOUCH THEM");
 		} catch (IOException e) {
-			showMessageDialog(null, e.getMessage());
+			Main.showExceptionInfo(e);
 		}
 
 	}
@@ -115,14 +128,14 @@ public class Configuration {
 				new File(cfgPath).mkdir();
 				file.createNewFile();
 			} catch (IOException e) {
-				showMessageDialog(null, e.getMessage());
+				Main.showExceptionInfo(e);
 			}
 		}
 	}
 
 	@SuppressWarnings("serial")
 	public final Map<Keys, String> getKeysMap() {
-		return new HashMap<Keys, String>(5) {
+		return Collections.unmodifiableMap(new EnumMap<Keys, String>(Keys.class) {
 			{
 				put(APP_KEY, properties.getProperty(APP_KEY.toString()));
 				put(APP_SECRET, properties.getProperty(APP_SECRET.toString()));
@@ -131,6 +144,7 @@ public class Configuration {
 				put(UID, properties.getProperty(UID.toString()));
 
 			}
-		};
+		});
+
 	}
 }
