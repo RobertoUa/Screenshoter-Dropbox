@@ -17,6 +17,7 @@ public class URLshortener {
 	public static String shorten(String longUrl) {
 		DataOutputStream printout = null;
 		BufferedReader reader = null;
+		String link = "";
 		String json = "";
 		try {
 			URL url = new URL(URL_GOOGL_SERVICE);
@@ -39,12 +40,12 @@ public class URLshortener {
 
 			JSONParser parser = new JSONParser();
 			JSONObject jsonObject = (JSONObject) parser.parse(json);
-			String link = (String) jsonObject.get("id");
+			link = (String) jsonObject.get("id");
 
-			return link;
-
-		} catch (IOException | ParseException ex) {
+		} catch (IOException ex) {
 			return longUrl;
+		} catch (ParseException e) {
+			Main.showExceptionInfo(e);
 		} finally {
 			try {
 				if (printout != null && reader != null) {
@@ -53,9 +54,10 @@ public class URLshortener {
 					reader.close();
 				}
 			} catch (IOException e) {
-				e.printStackTrace();
+				Main.showExceptionInfo(e);
 			}
 
 		}
+		return link;
 	}
 }

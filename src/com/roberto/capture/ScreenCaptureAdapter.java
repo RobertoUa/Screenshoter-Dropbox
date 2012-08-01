@@ -9,10 +9,10 @@ import java.util.concurrent.Callable;
 import javax.swing.JPanel;
 import javax.swing.event.MouseInputListener;
 
-/**Adapter class for ScreenCapture without fiels*/
-public abstract class ScreenCaptureAdapter extends JPanel implements
-		KeyListener, MouseInputListener, Callable<BufferedImage> {
-	
+/**Adapter class for ScreenCapture without any fields*/
+public abstract class ScreenCaptureAdapter extends JPanel implements KeyListener,
+		MouseInputListener, Callable<BufferedImage> {
+
 	private static final long serialVersionUID = 1L;
 
 	@Override
@@ -51,12 +51,6 @@ public abstract class ScreenCaptureAdapter extends JPanel implements
 	}
 
 	@Override
-	public BufferedImage call() throws Exception {
-
-		return null;
-	}
-
-	@Override
 	public void keyTyped(KeyEvent e) {
 
 	}
@@ -70,5 +64,8 @@ public abstract class ScreenCaptureAdapter extends JPanel implements
 	public void keyReleased(KeyEvent e) {
 
 	}
+
+	@Override
+	public abstract BufferedImage call() throws Exception;
 
 }
