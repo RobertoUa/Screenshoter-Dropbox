@@ -15,8 +15,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 
 import javax.swing.JDialog;
-
-import com.roberto.main.Main;
+import javax.swing.JOptionPane;
 
 public class ScreenCapture extends ScreenCaptureAdapter {
 
@@ -39,7 +38,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 		try {
 			image = new Robot().createScreenCapture(res);
 		} catch (AWTException e) {
-			Main.showExceptionInfo(e);
+			JOptionPane.showMessageDialog(null, e.getMessage());
 		}
 		createAndShowGui(resolution);
 
@@ -58,6 +57,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 		addMouseListener(this);
 		addMouseMotionListener(this);
 		frame.addKeyListener(this);
+		addKeyListener(this);
 		setIgnoreRepaint(true);
 		frame.repaint();
 
@@ -87,11 +87,6 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 	@Override
 	public void mousePressed(MouseEvent e) {
 		if (e.getButton() == MouseEvent.BUTTON3) {
-			try {
-				Thread.sleep(50);
-			} catch (InterruptedException e1) {
-				Main.showExceptionInfo(e1);
-			}
 			frame.dispose();
 			System.exit(0);
 		}
@@ -121,10 +116,8 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 	@Override
 	public void keyReleased(KeyEvent e) {
 		if (e.getKeyCode() == KeyEvent.VK_SPACE) {
-			x = startX = endX;
-			y = startY = endY;
-			width = 0;
-			height = 0;
+			startX = endX;
+			startY = endY;
 		} else if (e.getKeyCode() == KeyEvent.VK_CONTROL || e.getKeyCode() == KeyEvent.VK_ENTER
 				|| e.getKeyCode() == KeyEvent.VK_F) {
 			finished = true;
@@ -142,7 +135,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 			try {
 				Thread.sleep(15); // 1000 / 15 = about 60 Frames per second
 			} catch (InterruptedException e) {
-				Main.showExceptionInfo(e);
+				JOptionPane.showMessageDialog(null, e.getMessage());
 			}
 		}
 		frame.setVisible(false);
