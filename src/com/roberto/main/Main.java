@@ -3,9 +3,10 @@ package com.roberto.main;
 import java.awt.Toolkit;
 import java.awt.datatransfer.StringSelection;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Map;
@@ -14,18 +15,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.imageio.ImageIO;
+import javax.net.ssl.HttpsURLConnection;
 import javax.swing.JOptionPane;
 
 import javazoom.jl.decoder.JavaLayerException;
 import javazoom.jl.player.Player;
 
-import com.dropbox.client2.DropboxAPI;
-import com.dropbox.client2.exception.DropboxException;
-import com.dropbox.client2.session.AccessTokenPair;
-import com.dropbox.client2.session.AppKeyPair;
-import com.dropbox.client2.session.Session.AccessType;
-import com.dropbox.client2.session.WebAuthSession;
 import com.roberto.capture.ScreenCapture;
+import com.roberto.dropbox.AccessTokenPair;
+import com.roberto.dropbox.AppKeyPair;
+import com.roberto.dropbox.Dropbox;
+import com.roberto.dropbox.DropboxException;
 
 public class Main {
 	public enum Keys {
@@ -33,25 +33,27 @@ public class Main {
 	}
 
 	private static long start = System.nanoTime();
-	private String appKey, appSecret, accessKey, accessSecret;
 	private String uid;
 	private Thread copyAndNotify, captureThread;
-	private ByteArrayInputStream imgBytes;
+	private ByteArrayOutputStream output;
+	private AppKeyPair appKeys;
+	private AccessTokenPair acc;
 
 	public static void main(String args[]) throws InterruptedException {
 		new Main();
-
 	}
 
 	private Main() throws InterruptedException {
 		loadKeys();
+		System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
 		captureScreen();
 
 		String currTime = new SimpleDateFormat("dd-MMM-HH:mm:ss").format(Calendar.getInstance()
 				.getTime());
-		String filename = "/Scrn/" + currTime + ".png";
+		final String filename = "/Scrn/" + currTime + ".png";
 
 		copyUrlAndNotify(filename);
+
 		upload(filename);
 
 		copyAndNotify.join();
@@ -60,22 +62,30 @@ public class Main {
 	}
 
 	private void upload(String filename) {
-		AppKeyPair appKeys = new AppKeyPair(appKey, appSecret);
-		WebAuthSession session = new WebAuthSession(appKeys, AccessType.DROPBOX);
-		AccessTokenPair acc = new AccessTokenPair(accessKey, accessSecret);
-
-		session.setAccessTokenPair(acc);
-		DropboxAPI<WebAuthSession> client = new DropboxAPI<WebAuthSession>(session);
-
+		BufferedOutputStream out = null;
 		try {
+			HttpsURLConnection conn = Dropbox.upload(filename, appKeys, acc);
+			out = new BufferedOutputStream(conn.getOutputStream());
+
 			captureThread.join();
-			int size = imgBytes.available();
-			client.putFile("/Public" + filename, imgBytes, size, null, null);
+			out.write(output.toByteArray());
+
+			conn.getInputStream().available();
 		} catch (DropboxException e) {
 			loadKeys();
 			upload(filename);
 		} catch (InterruptedException e) {
 			showExceptionInfo(e);
+		} catch (MalformedURLException e) {
+			showExceptionInfo(e);
+		} catch (IOException e) {
+			showExceptionInfo(e);
+		} finally {
+			try {
+				out.close();
+			} catch (IOException e) {
+				showExceptionInfo(e);
+			}
 		}
 	}
 
@@ -84,14 +94,16 @@ public class Main {
 			@Override
 			public void run() {
 				try {
-					ByteArrayOutputStream output = new ByteArrayOutputStream();
+					output = new ByteArrayOutputStream();
 					ScreenCapture selecting = new ScreenCapture();
+					System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0,
+							" ms ready to capture\n");
 					ExecutorService exec = Executors.newSingleThreadExecutor();
+					
 					BufferedImage image = exec.submit(selecting).get();
 					exec.shutdown();
 
 					ImageIO.write(image, "png", output);
-					imgBytes = new ByteArrayInputStream(output.toByteArray());
 				} catch (IOException e) {
 					showExceptionInfo(e);
 				} catch (InterruptedException e) {
@@ -106,7 +118,7 @@ public class Main {
 
 	}
 
-	/** Copies shorten url(or long one if url shrunking fails) to clipboard, notifies a user and terminates the programm*/
+	/** Copies shorten url(or long one if url shrunking fails) to clipboard, notifies a user and terminates the programm */
 	private void copyUrlAndNotify(final String filename) {
 		copyAndNotify = new Thread("copyAndNotify thread") {
 			@Override
@@ -116,10 +128,8 @@ public class Main {
 				StringSelection selection = new StringSelection(shortUrl);
 				String soundName = "/notify.mp3";
 				try {
-
 					Player player = new Player(getClass().getResourceAsStream(soundName));
 					captureThread.join();
-
 					Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
 					player.play();
 				} catch (JavaLayerException e) {
@@ -138,10 +148,8 @@ public class Main {
 		final Configuration cfg = new Configuration();
 		final Map<Keys, String> keys = cfg.getKeysMap();
 
-		appKey = keys.get(Keys.APP_KEY);
-		appSecret = keys.get(Keys.APP_SECRET);
-		accessKey = keys.get(Keys.ACCESS_KEY);
-		accessSecret = keys.get(Keys.ACCESS_SECRET);
+		appKeys = new AppKeyPair(keys.get(Keys.APP_KEY), keys.get(Keys.APP_SECRET));
+		acc = new AccessTokenPair(keys.get(Keys.ACCESS_KEY), keys.get(Keys.ACCESS_SECRET));
 		uid = keys.get(Keys.UID);
 	}
 

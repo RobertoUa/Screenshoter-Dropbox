@@ -13,23 +13,20 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.URI;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Properties;
 
 import javax.swing.JOptionPane;
+import javax.swing.UIManager;
+import javax.swing.UnsupportedLookAndFeelException;
 
-import com.dropbox.client2.DropboxAPI;
-import com.dropbox.client2.exception.DropboxException;
-import com.dropbox.client2.session.AccessTokenPair;
-import com.dropbox.client2.session.AppKeyPair;
-import com.dropbox.client2.session.RequestTokenPair;
-import com.dropbox.client2.session.Session.AccessType;
-import com.dropbox.client2.session.WebAuthSession;
-import com.dropbox.client2.session.WebAuthSession.WebAuthInfo;
+import com.roberto.dropbox.AccessTokenPair;
+import com.roberto.dropbox.AppKeyPair;
+import com.roberto.dropbox.Dropbox;
+import com.roberto.dropbox.DropboxException;
 import com.roberto.main.Main.Keys;
 
 public class Configuration {
@@ -40,17 +37,16 @@ public class Configuration {
 	private static final String cfgFilename = "cfg.ini";
 
 	public Configuration() {
-		cfgPath = System.getProperties().getProperty("user.home") + File.separator + ".DBCfg";
+		cfgPath = System.getProperties().getProperty("user.home") + File.separator
+				+ ".screenshoter";
 
 		file = new File(cfgPath + File.separator + cfgFilename);
 		loadCfg();
 	}
 
 	public void loadCfg() {
-
 		checkCfg();
-
-		try { //TODO try-with-resources
+		try { // TODO try-with-resources
 			BufferedInputStream input = new BufferedInputStream(new FileInputStream(file));
 			properties.load(input);
 		} catch (IOException e) {
@@ -69,49 +65,56 @@ public class Configuration {
 	}
 
 	private void storeAppKeyPair() {
-		String appKey = JOptionPane.showInputDialog("Enter your " + APP_KEY);
-		String appSecret = JOptionPane.showInputDialog("Enter your " + APP_SECRET);
-
-		if (appKey == null || appSecret == null) {
-			file.delete();
-			System.exit(0);
-		}
-
-		saveConfiguration(APP_KEY, appKey);
-		saveConfiguration(APP_SECRET, appSecret);
-		AppKeyPair appKeys = new AppKeyPair(appKey, appSecret);
-		WebAuthSession session = new WebAuthSession(appKeys, AccessType.DROPBOX);
 		try {
-			WebAuthInfo authInfo = session.getAuthInfo();
-			RequestTokenPair pair = authInfo.requestTokenPair;
-			String url = authInfo.url;
-			Desktop.getDesktop().browse(new URL(url).toURI());
+			Desktop.getDesktop().browse(URI.create("https://www.dropbox.com/developers/apps"));
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+			String appKey = JOptionPane.showInputDialog("Enter your " + APP_KEY);
+			String appSecret = JOptionPane.showInputDialog("Enter your " + APP_SECRET);
+
+			if (appKey == null || appSecret == null) {
+				file.delete();
+				System.exit(0);
+			}
+
+			saveConfiguration(APP_KEY, appKey);
+			saveConfiguration(APP_SECRET, appSecret);
+			AppKeyPair appKeys = new AppKeyPair(appKey, appSecret);
+			Map<String, String> result = Dropbox.auth(appKeys, null);
+
+			Desktop.getDesktop().browse(
+					URI.create("https://www.dropbox.com/1/oauth/authorize?oauth_token="
+							+ result.get("oauth_token")));
+
 			JOptionPane
 					.showMessageDialog(null, "Press ok to continue once you have authenticated.");
-			session.retrieveWebAccessToken(pair);
 
-			AccessTokenPair tokens = session.getAccessTokenPair();
-			DropboxAPI<WebAuthSession> client = new DropboxAPI<WebAuthSession>(session);
+			AccessTokenPair acc = new AccessTokenPair(result.get("oauth_token"),
+					result.get("oauth_token_secret"));
+			result = Dropbox.auth(appKeys, acc);
 
-			saveConfiguration(ACCESS_KEY, tokens.key);
-			saveConfiguration(ACCESS_SECRET, tokens.secret);
-
-			String uid = String.valueOf(client.accountInfo().uid);
-			saveConfiguration(UID, uid);
+			saveConfiguration(ACCESS_KEY, result.get("oauth_token"));
+			saveConfiguration(ACCESS_SECRET, result.get("oauth_token_secret"));
+			saveConfiguration(UID, result.get("uid"));
 		} catch (DropboxException e) {
 			Main.showExceptionInfo(e);
 		} catch (MalformedURLException e) {
 			Main.showExceptionInfo(e);
 		} catch (IOException e) {
 			Main.showExceptionInfo(e);
-		} catch (URISyntaxException e) {
+		} catch (ClassNotFoundException e) {
+			Main.showExceptionInfo(e);
+		} catch (InstantiationException e) {
+			Main.showExceptionInfo(e);
+		} catch (IllegalAccessException e) {
+			Main.showExceptionInfo(e);
+		} catch (UnsupportedLookAndFeelException e) {
 			Main.showExceptionInfo(e);
 		}
 
 	}
 
 	private void saveConfiguration(Keys key, String value) {
-		try { //TODO try-with-resources
+		try { // TODO try-with-resources
 			FileOutputStream write = new FileOutputStream(file);
 			properties.setProperty(key.toString(), value);
 			properties.store(write, "DONT TOUCH THEM");
