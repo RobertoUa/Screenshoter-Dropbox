@@ -26,7 +26,7 @@ import com.roberto.dropbox.Dropbox;
 import com.roberto.dropbox.DropboxException;
 
 public class Main {
-	//private static long start = System.nanoTime();
+	// private static long start = System.nanoTime();
 
 	private String uid;
 	private Thread copyAndNotify, captureThread;
@@ -39,7 +39,6 @@ public class Main {
 
 	private Main() throws InterruptedException {
 		loadKeys();
-
 		captureScreen();
 
 		String currTime = new SimpleDateFormat("dd-MMM-HH:mm:ss").format(Calendar.getInstance()
@@ -50,7 +49,7 @@ public class Main {
 		upload(filename);
 
 		copyAndNotify.join();
-	//	System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
+		// System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
 
 	}
 
@@ -66,15 +65,10 @@ public class Main {
 			conn.getInputStream().available();
 			conn.disconnect();
 			out.close();
-		} catch (DropboxException e) {
+		} catch (DropboxException | IOException | InterruptedException e) {
 			loadKeys();
 			upload(filename);
-		} catch (IOException e) {
-			showExceptionInfo(e);
-		} catch (InterruptedException e) {
-			showExceptionInfo(e);
 		}
-
 	}
 
 	private void captureScreen() {
@@ -90,16 +84,13 @@ public class Main {
 					exec.shutdown();
 
 					ImageIO.write(image, "png", output);
-				} catch (IOException e) {
-					showExceptionInfo(e);
-				} catch (InterruptedException e) {
-					showExceptionInfo(e);
-				} catch (ExecutionException e) {
+					image.flush();
+				} catch (IOException | InterruptedException | ExecutionException e) {
 					showExceptionInfo(e);
 				}
 			}
 		};
-		captureThread.setPriority(Thread.NORM_PRIORITY + 1);
+		captureThread.setPriority(Thread.MAX_PRIORITY);
 		captureThread.start();
 	}
 
@@ -120,14 +111,15 @@ public class Main {
 
 					Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
 					player.play();
-				} catch (JavaLayerException e) {
-					showExceptionInfo(e);
-				} catch (InterruptedException e) {
+					if (player.isComplete()) {
+						player.close();
+					}
+				} catch (JavaLayerException | InterruptedException e) {
 					showExceptionInfo(e);
 				}
 			}
 		};
-		captureThread.setPriority(Thread.NORM_PRIORITY - 1);
+		copyAndNotify.setPriority(Thread.NORM_PRIORITY - 2);
 		copyAndNotify.start();
 	}
 

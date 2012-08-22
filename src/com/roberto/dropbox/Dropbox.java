@@ -14,8 +14,9 @@ import java.util.Scanner;
 import javax.net.ssl.HttpsURLConnection;
 
 public class Dropbox {
-
+	// The app keys for this app
 	public static final AppKeyPair APP_KEYS = new AppKeyPair("nzhmkbz5nta78ix", "6475uih5e79dkwe");
+
 	private static final String CONTENT_SERVER = "https://api-content.dropbox.com/";
 	private static final String API_SERVER = "https://api.dropbox.com/";
 	private static final int VERSION = 1;
@@ -62,7 +63,7 @@ public class Dropbox {
 		}
 
 		rd.close();
-		
+
 		return Dropbox.parseAsQueryString(entity);
 	}
 
@@ -84,7 +85,7 @@ public class Dropbox {
 		return result;
 	}
 
-	public static String buildOAuthHeader(AppKeyPair appKeyPair, AccessTokenPair signingTokenPair) {
+	private static String buildOAuthHeader(AppKeyPair appKeyPair, AccessTokenPair signingTokenPair) {
 		StringBuilder buf = new StringBuilder();
 		buf.append("OAuth oauth_version=\"1.0\"");
 		buf.append(", oauth_signature_method=\"PLAINTEXT\"");

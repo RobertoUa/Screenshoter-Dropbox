@@ -9,7 +9,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.net.MalformedURLException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URI;
@@ -76,11 +75,7 @@ public class Configuration {
 			saveConfiguration(ACCESS_KEY, result.get(OAUTH_TOKEN));
 			saveConfiguration(ACCESS_SECRET, result.get(OAUTH_TOKEN_SCRT));
 			saveConfiguration(UID, result.get(UID.toLowerCase()));
-		} catch (DropboxException e) {
-			Main.showExceptionInfo(e);
-		} catch (MalformedURLException e) {
-			Main.showExceptionInfo(e);
-		} catch (IOException e) {
+		} catch (DropboxException | IOException e) {
 			Main.showExceptionInfo(e);
 		}
 
@@ -103,9 +98,7 @@ public class Configuration {
 				System.out.println(cominginText);
 				Thread.sleep(500);
 			}
-		} catch (IOException e) {
-			Main.showExceptionInfo(e);
-		} catch (InterruptedException e) {
+		} catch (IOException | InterruptedException e) {
 			Main.showExceptionInfo(e);
 		}
 
@@ -135,11 +128,13 @@ public class Configuration {
 
 	@SuppressWarnings("serial")
 	public final Map<String, String> getKeysMap() {
-		return Collections.unmodifiableMap(new HashMap<String, String>() {{		
+		return Collections.unmodifiableMap(new HashMap<String, String>() {
+			{
 				put("uid", properties.getProperty(UID));
 				put("accessKey", properties.getProperty(ACCESS_KEY));
-				put("accessSecret", properties.getProperty(ACCESS_SECRET));				
-			}});
+				put("accessSecret", properties.getProperty(ACCESS_SECRET));
+			}
+		});
 
 	}
 }
