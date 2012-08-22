@@ -6,7 +6,6 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Map;
@@ -23,21 +22,16 @@ import javazoom.jl.player.Player;
 
 import com.roberto.capture.ScreenCapture;
 import com.roberto.dropbox.AccessTokenPair;
-import com.roberto.dropbox.AppKeyPair;
 import com.roberto.dropbox.Dropbox;
 import com.roberto.dropbox.DropboxException;
 
 public class Main {
-	public enum Keys {
-		APP_KEY, APP_SECRET, ACCESS_KEY, ACCESS_SECRET, UID
-	}
+	//private static long start = System.nanoTime();
 
-	private static long start = System.nanoTime();
 	private String uid;
 	private Thread copyAndNotify, captureThread;
 	private ByteArrayOutputStream output;
-	private AppKeyPair appKeys;
-	private AccessTokenPair acc;
+	private AccessTokenPair accessKeys;
 
 	public static void main(String args[]) throws InterruptedException {
 		new Main();
@@ -45,7 +39,7 @@ public class Main {
 
 	private Main() throws InterruptedException {
 		loadKeys();
-		System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
+
 		captureScreen();
 
 		String currTime = new SimpleDateFormat("dd-MMM-HH:mm:ss").format(Calendar.getInstance()
@@ -53,40 +47,34 @@ public class Main {
 		final String filename = "/Scrn/" + currTime + ".png";
 
 		copyUrlAndNotify(filename);
-
 		upload(filename);
 
 		copyAndNotify.join();
-		System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
-		System.exit(0); // we are done here
+	//	System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
+
 	}
 
 	private void upload(String filename) {
 		BufferedOutputStream out = null;
 		try {
-			HttpsURLConnection conn = Dropbox.upload(filename, appKeys, acc);
+			HttpsURLConnection conn = Dropbox.upload(filename, accessKeys);
 			out = new BufferedOutputStream(conn.getOutputStream());
 
 			captureThread.join();
 			out.write(output.toByteArray());
 
 			conn.getInputStream().available();
+			conn.disconnect();
+			out.close();
 		} catch (DropboxException e) {
 			loadKeys();
 			upload(filename);
-		} catch (InterruptedException e) {
-			showExceptionInfo(e);
-		} catch (MalformedURLException e) {
-			showExceptionInfo(e);
 		} catch (IOException e) {
 			showExceptionInfo(e);
-		} finally {
-			try {
-				out.close();
-			} catch (IOException e) {
-				showExceptionInfo(e);
-			}
+		} catch (InterruptedException e) {
+			showExceptionInfo(e);
 		}
+
 	}
 
 	private void captureScreen() {
@@ -95,11 +83,9 @@ public class Main {
 			public void run() {
 				try {
 					output = new ByteArrayOutputStream();
+
 					ScreenCapture selecting = new ScreenCapture();
-					System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0,
-							" ms ready to capture\n");
 					ExecutorService exec = Executors.newSingleThreadExecutor();
-					
 					BufferedImage image = exec.submit(selecting).get();
 					exec.shutdown();
 
@@ -113,23 +99,25 @@ public class Main {
 				}
 			}
 		};
-		captureThread.setPriority(Thread.NORM_PRIORITY + 2);
+		captureThread.setPriority(Thread.NORM_PRIORITY + 1);
 		captureThread.start();
-
 	}
 
 	/** Copies shorten url(or long one if url shrunking fails) to clipboard, notifies a user and terminates the programm */
 	private void copyUrlAndNotify(final String filename) {
-		copyAndNotify = new Thread("copyAndNotify thread") {
+		copyAndNotify = new Thread("copyAndNotify") {
 			@Override
 			public void run() {
 				String url = "http://dl.dropbox.com/u/" + uid + filename;
 				String shortUrl = URLshortener.shorten(url);
+
 				StringSelection selection = new StringSelection(shortUrl);
 				String soundName = "/notify.mp3";
 				try {
 					Player player = new Player(getClass().getResourceAsStream(soundName));
+
 					captureThread.join();
+
 					Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
 					player.play();
 				} catch (JavaLayerException e) {
@@ -139,18 +127,19 @@ public class Main {
 				}
 			}
 		};
-		copyAndNotify.setPriority(Thread.NORM_PRIORITY - 2);
+		captureThread.setPriority(Thread.NORM_PRIORITY - 1);
 		copyAndNotify.start();
-
 	}
 
 	private void loadKeys() {
 		final Configuration cfg = new Configuration();
-		final Map<Keys, String> keys = cfg.getKeysMap();
+		final Map<String, String> keys = cfg.getKeysMap();
 
-		appKeys = new AppKeyPair(keys.get(Keys.APP_KEY), keys.get(Keys.APP_SECRET));
-		acc = new AccessTokenPair(keys.get(Keys.ACCESS_KEY), keys.get(Keys.ACCESS_SECRET));
-		uid = keys.get(Keys.UID);
+		String accessKey = keys.get("accessKey");
+		String accessSecret = keys.get("accessSecret");
+		uid = (String) keys.get("uid");
+		accessKeys = new AccessTokenPair(accessKey, accessSecret);
+
 	}
 
 	public static void showExceptionInfo(Exception e) {

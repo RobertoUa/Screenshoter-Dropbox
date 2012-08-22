@@ -93,7 +93,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 				Main.showExceptionInfo(e1);
 			}
 			frame.dispose();
-			System.exit(0);
+			throw new RuntimeException();
 		}
 		startX = e.getX();
 		startY = e.getY();
@@ -130,7 +130,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 			finished = true;
 		} else {
 			frame.dispose();
-			System.exit(0);
+			throw new RuntimeException();
 		}
 
 	}

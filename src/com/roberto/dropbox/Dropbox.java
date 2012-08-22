@@ -15,11 +15,12 @@ import javax.net.ssl.HttpsURLConnection;
 
 public class Dropbox {
 
+	public static final AppKeyPair APP_KEYS = new AppKeyPair("nzhmkbz5nta78ix", "6475uih5e79dkwe");
 	private static final String CONTENT_SERVER = "https://api-content.dropbox.com/";
 	private static final String API_SERVER = "https://api.dropbox.com/";
 	private static final int VERSION = 1;
 
-	public static HttpsURLConnection upload(String filename, AppKeyPair appKeys, AccessTokenPair acc)
+	public static HttpsURLConnection upload(String filename, AccessTokenPair acc)
 			throws IOException {
 
 		String params = "?overwrite=false&parent_rev=&locale=en";
@@ -27,7 +28,7 @@ public class Dropbox {
 				+ params);
 
 		HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
-		conn.addRequestProperty("Authorization", Dropbox.buildOAuthHeader(appKeys, acc));
+		conn.addRequestProperty("Authorization", Dropbox.buildOAuthHeader(APP_KEYS, acc));
 		conn.setDoOutput(true);
 		conn.setDoInput(true);
 		conn.setUseCaches(false);
@@ -37,18 +38,18 @@ public class Dropbox {
 
 	}
 
-	public static Map<String, String> auth(AppKeyPair appKeys, AccessTokenPair acc)
-			throws DropboxException, IOException {
+	public static Map<String, String> auth(AccessTokenPair acc) throws DropboxException,
+			IOException {
 
 		URL url;
 		String str;
 		if (acc == null) {
 			url = new URL(API_SERVER + VERSION + "/oauth/request_token");
-			str = Dropbox.buildOAuthHeader(appKeys, null);
+			str = Dropbox.buildOAuthHeader(APP_KEYS, null);
 
 		} else {
 			url = new URL(API_SERVER + VERSION + "/oauth/access_token");
-			str = Dropbox.buildOAuthHeader(appKeys, acc);
+			str = Dropbox.buildOAuthHeader(APP_KEYS, acc);
 		}
 
 		URLConnection conn = url.openConnection();
@@ -61,7 +62,7 @@ public class Dropbox {
 		}
 
 		rd.close();
-
+		
 		return Dropbox.parseAsQueryString(entity);
 	}
 
@@ -79,7 +80,7 @@ public class Dropbox {
 			}
 			result.put(parts[0], parts[1]);
 		}
-
+		scanner.close();
 		return result;
 	}
 

@@ -1,35 +1,35 @@
 package com.roberto.main;
 
-import static com.roberto.main.Main.Keys.ACCESS_KEY;
-import static com.roberto.main.Main.Keys.ACCESS_SECRET;
-import static com.roberto.main.Main.Keys.APP_KEY;
-import static com.roberto.main.Main.Keys.APP_SECRET;
-import static com.roberto.main.Main.Keys.UID;
-
 import java.awt.Desktop;
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.MalformedURLException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.URI;
 import java.util.Collections;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.swing.JOptionPane;
-import javax.swing.UIManager;
-import javax.swing.UnsupportedLookAndFeelException;
-
 import com.roberto.dropbox.AccessTokenPair;
-import com.roberto.dropbox.AppKeyPair;
 import com.roberto.dropbox.Dropbox;
 import com.roberto.dropbox.DropboxException;
-import com.roberto.main.Main.Keys;
 
 public class Configuration {
+
+	private final static String ACCESS_KEY = "ACCESS_KEY";
+	private final static String ACCESS_SECRET = "ACCESS_SECRET";
+	private final static String UID = "UID";
+
+	private final static String OAUTH_TOKEN = "oauth_token";
+	private final static String OAUTH_TOKEN_SCRT = "oauth_token_secret";
 
 	private Properties properties = new Properties();
 	private String cfgPath;
@@ -46,19 +46,15 @@ public class Configuration {
 
 	public void loadCfg() {
 		checkCfg();
-		try { // TODO try-with-resources
-			BufferedInputStream input = new BufferedInputStream(new FileInputStream(file));
+		try (BufferedInputStream input = new BufferedInputStream(new FileInputStream(file))) {
 			properties.load(input);
 		} catch (IOException e) {
 			storeAppKeyPair();
 			loadCfg();
 		}
 
-		if (!properties.containsKey(APP_KEY.toString())
-				|| !properties.containsKey(APP_SECRET.toString())
-				|| !properties.containsKey(ACCESS_KEY.toString())
-				|| !properties.containsKey(ACCESS_SECRET.toString())
-				|| !properties.containsKey(UID.toString())) {
+		if (!properties.containsKey(ACCESS_KEY) || !properties.containsKey(ACCESS_SECRET)
+				|| !properties.containsKey(UID)) {
 			storeAppKeyPair();
 			loadCfg();
 		}
@@ -66,56 +62,57 @@ public class Configuration {
 
 	private void storeAppKeyPair() {
 		try {
-			Desktop.getDesktop().browse(URI.create("https://www.dropbox.com/developers/apps"));
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-			String appKey = JOptionPane.showInputDialog("Enter your " + APP_KEY);
-			String appSecret = JOptionPane.showInputDialog("Enter your " + APP_SECRET);
-
-			if (appKey == null || appSecret == null) {
-				file.delete();
-				System.exit(0);
-			}
-
-			saveConfiguration(APP_KEY, appKey);
-			saveConfiguration(APP_SECRET, appSecret);
-			AppKeyPair appKeys = new AppKeyPair(appKey, appSecret);
-			Map<String, String> result = Dropbox.auth(appKeys, null);
+			Map<String, String> result = Dropbox.auth(null);
 
 			Desktop.getDesktop().browse(
 					URI.create("https://www.dropbox.com/1/oauth/authorize?oauth_token="
-							+ result.get("oauth_token")));
+							+ result.get(OAUTH_TOKEN) + "&oauth_callback=http://localhost:1337/"));
+			waitForAuth();
 
-			JOptionPane
-					.showMessageDialog(null, "Press ok to continue once you have authenticated.");
+			AccessTokenPair acc = new AccessTokenPair(result.get(OAUTH_TOKEN),
+					result.get(OAUTH_TOKEN_SCRT));
+			result = Dropbox.auth(acc);
 
-			AccessTokenPair acc = new AccessTokenPair(result.get("oauth_token"),
-					result.get("oauth_token_secret"));
-			result = Dropbox.auth(appKeys, acc);
-
-			saveConfiguration(ACCESS_KEY, result.get("oauth_token"));
-			saveConfiguration(ACCESS_SECRET, result.get("oauth_token_secret"));
-			saveConfiguration(UID, result.get("uid"));
+			saveConfiguration(ACCESS_KEY, result.get(OAUTH_TOKEN));
+			saveConfiguration(ACCESS_SECRET, result.get(OAUTH_TOKEN_SCRT));
+			saveConfiguration(UID, result.get(UID.toLowerCase()));
 		} catch (DropboxException e) {
 			Main.showExceptionInfo(e);
 		} catch (MalformedURLException e) {
 			Main.showExceptionInfo(e);
 		} catch (IOException e) {
 			Main.showExceptionInfo(e);
-		} catch (ClassNotFoundException e) {
+		}
+
+	}
+
+	private void waitForAuth() {
+		try (ServerSocket serverSocket = new ServerSocket(1337);
+				Socket clientSocket = serverSocket.accept();
+				PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+				BufferedReader in = new BufferedReader(new InputStreamReader(
+						clientSocket.getInputStream()))) {
+
+			while (true) {
+				String cominginText = "";
+				cominginText = in.readLine();
+				if (!"null".equals(cominginText)) {
+					out.println("DONE");
+					break;
+				}
+				System.out.println(cominginText);
+				Thread.sleep(500);
+			}
+		} catch (IOException e) {
 			Main.showExceptionInfo(e);
-		} catch (InstantiationException e) {
-			Main.showExceptionInfo(e);
-		} catch (IllegalAccessException e) {
-			Main.showExceptionInfo(e);
-		} catch (UnsupportedLookAndFeelException e) {
+		} catch (InterruptedException e) {
 			Main.showExceptionInfo(e);
 		}
 
 	}
 
-	private void saveConfiguration(Keys key, String value) {
-		try { // TODO try-with-resources
-			FileOutputStream write = new FileOutputStream(file);
+	private void saveConfiguration(String key, String value) {
+		try (FileOutputStream write = new FileOutputStream(file)) {
 			properties.setProperty(key.toString(), value);
 			properties.store(write, "DONT TOUCH THEM");
 		} catch (IOException e) {
@@ -137,17 +134,12 @@ public class Configuration {
 	}
 
 	@SuppressWarnings("serial")
-	public final Map<Keys, String> getKeysMap() {
-		return Collections.unmodifiableMap(new EnumMap<Keys, String>(Keys.class) {
-			{
-				put(APP_KEY, properties.getProperty(APP_KEY.toString()));
-				put(APP_SECRET, properties.getProperty(APP_SECRET.toString()));
-				put(ACCESS_KEY, properties.getProperty(ACCESS_KEY.toString()));
-				put(ACCESS_SECRET, properties.getProperty(ACCESS_SECRET.toString()));
-				put(UID, properties.getProperty(UID.toString()));
-
-			}
-		});
+	public final Map<String, String> getKeysMap() {
+		return Collections.unmodifiableMap(new HashMap<String, String>() {{		
+				put("uid", properties.getProperty(UID));
+				put("accessKey", properties.getProperty(ACCESS_KEY));
+				put("accessSecret", properties.getProperty(ACCESS_SECRET));				
+			}});
 
 	}
 }
