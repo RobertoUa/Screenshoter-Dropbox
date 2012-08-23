@@ -35,15 +35,18 @@ public class Configuration {
 	private File file;
 	private static final String cfgFilename = "cfg.ini";
 
-	public Configuration() {
+	public Configuration(boolean doReauth) {
 		cfgPath = System.getProperties().getProperty("user.home") + File.separator
 				+ ".screenshoter";
 
 		file = new File(cfgPath + File.separator + cfgFilename);
+		if (doReauth) {
+			storeAppKeyPair();
+		}
 		loadCfg();
 	}
 
-	public void loadCfg() {
+	private void loadCfg() {
 		checkCfg();
 		try (BufferedInputStream input = new BufferedInputStream(new FileInputStream(file))) {
 			properties.load(input);
@@ -89,13 +92,11 @@ public class Configuration {
 						clientSocket.getInputStream()))) {
 
 			while (true) {
-				String cominginText = "";
-				cominginText = in.readLine();
+				String cominginText = in.readLine();
 				if (!"null".equals(cominginText)) {
 					out.println("DONE");
 					break;
 				}
-				System.out.println(cominginText);
 				Thread.sleep(500);
 			}
 		} catch (IOException | InterruptedException e) {

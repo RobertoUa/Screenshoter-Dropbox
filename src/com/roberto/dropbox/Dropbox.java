@@ -15,7 +15,7 @@ import javax.net.ssl.HttpsURLConnection;
 
 public class Dropbox {
 	// The app keys for this app
-	public static final AppKeyPair APP_KEYS = new AppKeyPair("nzhmkbz5nta78ix", "6475uih5e79dkwe");
+	public static final AppKeyPair APP_KEYS = AppKeys.APP_KEYS;
 
 	private static final String CONTENT_SERVER = "https://api-content.dropbox.com/";
 	private static final String API_SERVER = "https://api.dropbox.com/";
@@ -25,8 +25,7 @@ public class Dropbox {
 			throws IOException {
 
 		String params = "?overwrite=false&parent_rev=&locale=en";
-		URL url = new URL(CONTENT_SERVER + VERSION + "/files_put/dropbox/Public" + filename
-				+ params);
+		URL url = new URL(CONTENT_SERVER + VERSION + "/files_put/sandbox/" + filename + params);
 
 		HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
 		conn.addRequestProperty("Authorization", Dropbox.buildOAuthHeader(APP_KEYS, acc));
@@ -36,6 +35,35 @@ public class Dropbox {
 		conn.setRequestMethod("PUT");
 
 		return conn;
+
+	}
+
+	public static String shortLink(String filename, AccessTokenPair acc) throws IOException {
+
+		String entity = "";
+		String args = "?locale=en&short_url=true";
+		URL url = new URL(API_SERVER + VERSION + "/shares/sandbox/" + filename + args);
+
+		HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+		conn.addRequestProperty("Authorization", Dropbox.buildOAuthHeader(APP_KEYS, acc));
+		conn.setDoInput(true);
+		conn.setUseCaches(false);
+		conn.setRequestMethod("POST");
+
+		BufferedReader rd = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+
+		Scanner scanner = new Scanner(rd.readLine()).useDelimiter("\"");
+		while (scanner.hasNext()) {
+			entity = scanner.next();
+			if (entity.contains("http")) {
+				scanner.close();
+				break;
+			}
+		}
+		rd.close();
+		conn.disconnect();
+
+		return entity;
 
 	}
 

@@ -6,7 +6,6 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -28,32 +27,28 @@ import com.roberto.dropbox.DropboxException;
 public class Main {
 	// private static long start = System.nanoTime();
 
-	private String uid;
 	private Thread copyAndNotify, captureThread;
 	private ByteArrayOutputStream output;
-	private AccessTokenPair accessKeys;
 
 	public static void main(String args[]) throws InterruptedException {
 		new Main();
 	}
 
 	private Main() throws InterruptedException {
-		loadKeys();
+		AccessTokenPair accessKeys = loadKeys(false);
 		captureScreen();
 
-		String currTime = new SimpleDateFormat("dd-MMM-HH:mm:ss").format(Calendar.getInstance()
-				.getTime());
-		final String filename = "/Scrn/" + currTime + ".png";
+		final String filename = Calendar.getInstance().getTime().toString() + ".png";
 
-		copyUrlAndNotify(filename);
-		upload(filename);
+		copyUrlAndNotify(filename, accessKeys);
+		upload(filename, accessKeys);
 
 		copyAndNotify.join();
 		// System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
 
 	}
 
-	private void upload(String filename) {
+	private void upload(String filename, AccessTokenPair accessKeys) {
 		BufferedOutputStream out = null;
 		try {
 			HttpsURLConnection conn = Dropbox.upload(filename, accessKeys);
@@ -66,8 +61,9 @@ public class Main {
 			conn.disconnect();
 			out.close();
 		} catch (DropboxException | IOException | InterruptedException e) {
-			loadKeys();
-			upload(filename);
+			showExceptionInfo(e);
+			loadKeys(true);
+			upload(filename, accessKeys);
 		}
 	}
 
@@ -94,27 +90,28 @@ public class Main {
 		captureThread.start();
 	}
 
-	/** Copies shorten url(or long one if url shrunking fails) to clipboard, notifies a user and terminates the programm */
-	private void copyUrlAndNotify(final String filename) {
-		copyAndNotify = new Thread("copyAndNotify") {
+	/**
+	 * Copies shorten url(or long one if url shrunking fails) to clipboard, notifies a user and terminates the programm
+	 * 
+	 */
+	private void copyUrlAndNotify(final String filename, final AccessTokenPair accessKeys) {
+		copyAndNotify = new Thread("copyAndNotify thread") {
 			@Override
 			public void run() {
-				String url = "http://dl.dropbox.com/u/" + uid + filename;
-				String shortUrl = URLshortener.shorten(url);
-
-				StringSelection selection = new StringSelection(shortUrl);
 				String soundName = "/notify.mp3";
 				try {
 					Player player = new Player(getClass().getResourceAsStream(soundName));
 
 					captureThread.join();
+					Thread.sleep(500);
 
+					StringSelection selection = new StringSelection(Dropbox.shortLink(filename,
+							accessKeys));
 					Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
+
 					player.play();
-					if (player.isComplete()) {
-						player.close();
-					}
-				} catch (JavaLayerException | InterruptedException e) {
+					player.close();
+				} catch (JavaLayerException | InterruptedException | IOException e) {
 					showExceptionInfo(e);
 				}
 			}
@@ -123,14 +120,14 @@ public class Main {
 		copyAndNotify.start();
 	}
 
-	private void loadKeys() {
-		final Configuration cfg = new Configuration();
+	private AccessTokenPair loadKeys(boolean doReauth) {
+		final Configuration cfg = new Configuration(doReauth);
 		final Map<String, String> keys = cfg.getKeysMap();
 
 		String accessKey = keys.get("accessKey");
 		String accessSecret = keys.get("accessSecret");
-		uid = (String) keys.get("uid");
-		accessKeys = new AccessTokenPair(accessKey, accessSecret);
+
+		return new AccessTokenPair(accessKey, accessSecret);
 
 	}
 
