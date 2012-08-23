@@ -105,7 +105,7 @@ public class Main {
 					captureThread.join();
 					Thread.sleep(500);
 
-					StringSelection selection = new StringSelection(Dropbox.shortLink(filename,
+					StringSelection selection = new StringSelection(Dropbox.share(filename,
 							accessKeys));
 					Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
 

@@ -25,7 +25,6 @@ public class Configuration {
 
 	private final static String ACCESS_KEY = "ACCESS_KEY";
 	private final static String ACCESS_SECRET = "ACCESS_SECRET";
-	private final static String UID = "UID";
 
 	private final static String OAUTH_TOKEN = "oauth_token";
 	private final static String OAUTH_TOKEN_SCRT = "oauth_token_secret";
@@ -55,8 +54,7 @@ public class Configuration {
 			loadCfg();
 		}
 
-		if (!properties.containsKey(ACCESS_KEY) || !properties.containsKey(ACCESS_SECRET)
-				|| !properties.containsKey(UID)) {
+		if (!properties.containsKey(ACCESS_KEY) || !properties.containsKey(ACCESS_SECRET)) {
 			storeAppKeyPair();
 			loadCfg();
 		}
@@ -77,7 +75,6 @@ public class Configuration {
 
 			saveConfiguration(ACCESS_KEY, result.get(OAUTH_TOKEN));
 			saveConfiguration(ACCESS_SECRET, result.get(OAUTH_TOKEN_SCRT));
-			saveConfiguration(UID, result.get(UID.toLowerCase()));
 		} catch (DropboxException | IOException e) {
 			Main.showExceptionInfo(e);
 		}
@@ -131,7 +128,6 @@ public class Configuration {
 	public final Map<String, String> getKeysMap() {
 		return Collections.unmodifiableMap(new HashMap<String, String>() {
 			{
-				put("uid", properties.getProperty(UID));
 				put("accessKey", properties.getProperty(ACCESS_KEY));
 				put("accessSecret", properties.getProperty(ACCESS_SECRET));
 			}

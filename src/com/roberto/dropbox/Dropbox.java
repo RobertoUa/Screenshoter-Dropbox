@@ -38,7 +38,7 @@ public class Dropbox {
 
 	}
 
-	public static String shortLink(String filename, AccessTokenPair acc) throws IOException {
+	public static String share(String filename, AccessTokenPair acc) throws IOException {
 
 		String entity = "";
 		String args = "?locale=en&short_url=true";
