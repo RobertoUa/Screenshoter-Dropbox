@@ -3,7 +3,6 @@ package com.roberto.capture;
 import java.awt.AWTException;
 import java.awt.Color;
 import java.awt.Cursor;
-import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -34,27 +33,25 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 	private boolean finished;
 
 	public ScreenCapture() {
-		final Dimension resolution = Toolkit.getDefaultToolkit().getScreenSize();
-		final Rectangle res = new Rectangle(resolution);
+		Rectangle res = new Rectangle(Toolkit.getDefaultToolkit().getScreenSize());
 		try {
 			image = new Robot().createScreenCapture(res);
 		} catch (AWTException e) {
 			Main.showExceptionInfo(e);
 		}
-		createAndShowGui(resolution);
+		createAndShowGui(res);
 
 	}
 
-	private void createAndShowGui(Dimension resolution) {
+	private void createAndShowGui(Rectangle resolution) {
 		frame = new JDialog();
-		frame.setBounds(0, 0, resolution.width, resolution.height);
+		frame.setBounds(resolution);
 		frame.setUndecorated(true);
 		frame.add(this);
 		frame.setResizable(false);
 		frame.setVisible(true);
 		frame.setCursor(Cursor.getPredefinedCursor(Cursor.CROSSHAIR_CURSOR));
 		frame.setAlwaysOnTop(true);
-
 		addMouseListener(this);
 		addMouseMotionListener(this);
 		frame.addKeyListener(this);
@@ -74,6 +71,8 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 		g2.fillRect(x, y, width, height);
 		g2.setColor(Color.WHITE);
 		g2.drawRect(x, y, width, height);
+		g2.setColor(Color.BLACK);
+		g2.drawRect(x + 1, y + 1, width - 2, height - 2);
 		g2.setColor(Color.GRAY);
 		//Those are just offset values
 		g2.drawString(String.valueOf(width), x + width + 10, y + height + 15);
@@ -93,7 +92,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 				Main.showExceptionInfo(e1);
 			}
 			frame.dispose();
-			throw new RuntimeException();
+			System.exit(0);
 		}
 		startX = e.getX();
 		startY = e.getY();
@@ -130,7 +129,7 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 			finished = true;
 		} else {
 			frame.dispose();
-			throw new RuntimeException();
+			System.exit(0);
 		}
 
 	}
@@ -145,8 +144,8 @@ public class ScreenCapture extends ScreenCaptureAdapter {
 				Main.showExceptionInfo(e);
 			}
 		}
-		frame.setVisible(false);
 		frame.dispose();
+
 		return image;
 	}
 

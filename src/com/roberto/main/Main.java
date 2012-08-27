@@ -6,13 +6,16 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-import javax.imageio.ImageIO;
 import javax.net.ssl.HttpsURLConnection;
 import javax.swing.JOptionPane;
 
@@ -25,114 +28,115 @@ import com.roberto.dropbox.Dropbox;
 import com.roberto.dropbox.DropboxException;
 
 public class Main {
-	// private static long start = System.nanoTime();
+	private static long start = System.nanoTime();
 
-	private Thread copyAndNotify, captureThread;
-	private ByteArrayOutputStream output;
+	private CountDownLatch latch = new CountDownLatch(1);
 
-	public static void main(String args[]) throws InterruptedException {
+	public static void main(String args[]) {
 		new Main();
 	}
 
-	private Main() throws InterruptedException {
-		AccessTokenPair accessKeys = loadKeys(false);
-		captureScreen();
+	private Main() {
+		Map<String, String> keys = loadKeys(false);
+		String accessKey = keys.get("accessKey");
+		String accessSecret = keys.get("accessSecret");
+		String uid = keys.get("uid");
+		AccessTokenPair accessKeys = new AccessTokenPair(accessKey, accessSecret);
 
-		final String filename = Calendar.getInstance().getTime().toString() + ".png";
+		ExecutorService exec = Executors.newSingleThreadExecutor();
+		Future<byte[]> image = exec.submit(CaptureScreen.INSTANCE);
 
-		copyUrlAndNotify(filename, accessKeys);
-		upload(filename, accessKeys);
+		String currTime = new SimpleDateFormat("dd-MMM-HH:mm:ss").format(Calendar.getInstance()
+				.getTime());
+		;
 
-		copyAndNotify.join();
-		// System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
+		final String filename = "/Scrn/" + currTime + ".png";
+		copyUrlAndNotify(filename, uid);
+		upload(filename, accessKeys, image);
+
+		exec.shutdown();
+		System.out.printf("%.2f%s", (System.nanoTime() - start) / 1000000.0, " ms\n");
 
 	}
 
-	private void upload(String filename, AccessTokenPair accessKeys) {
-		BufferedOutputStream out = null;
+	private void upload(String filename, AccessTokenPair accessKeys, Future<byte[]> image) {
+		HttpsURLConnection conn = null;
 		try {
-			HttpsURLConnection conn = Dropbox.upload(filename, accessKeys);
-			out = new BufferedOutputStream(conn.getOutputStream());
+			conn = Dropbox.upload(filename, accessKeys);
 
-			captureThread.join();
-			out.write(output.toByteArray());
+			try (BufferedOutputStream out = new BufferedOutputStream(conn.getOutputStream())) {
+				byte[] imageBytes = image.get();
 
-			conn.getInputStream().available();
-			conn.disconnect();
-			out.close();
-		} catch (DropboxException | IOException | InterruptedException e) {
-			showExceptionInfo(e);
-			loadKeys(true);
-			upload(filename, accessKeys);
+				if (imageBytes == null) {
+					throw new NullPointerException("the screenshot is null");
+				}
+				out.write(imageBytes);
+			} catch (NullPointerException | InterruptedException | ExecutionException e) {
+				Main.showExceptionInfo(e);
+			}
+
+			latch.countDown();
+			conn.getInputStream();
+		} catch (DropboxException | IOException e) {
+			Main.showExceptionInfo(e);
+		} finally {
+			if (conn != null) {
+				conn.disconnect();
+			}
 		}
 	}
 
-	private void captureScreen() {
-		captureThread = new Thread("Capture thread") {
-			@Override
-			public void run() {
-				try {
-					output = new ByteArrayOutputStream();
+	private enum CaptureScreen implements Callable<byte[]> {
+		INSTANCE;
 
-					ScreenCapture selecting = new ScreenCapture();
-					ExecutorService exec = Executors.newSingleThreadExecutor();
-					BufferedImage image = exec.submit(selecting).get();
-					exec.shutdown();
+		@Override
+		public byte[] call() throws IOException, ExecutionException, InterruptedException {
+			ByteArrayOutputStream output = new ByteArrayOutputStream();
+			BufferedImage image = new ScreenCapture().call();
+			PngEncoder.encode(image, output);
+			image.flush();
 
-					ImageIO.write(image, "png", output);
-					image.flush();
-				} catch (IOException | InterruptedException | ExecutionException e) {
-					showExceptionInfo(e);
-				}
-			}
-		};
-		captureThread.setPriority(Thread.MAX_PRIORITY);
-		captureThread.start();
+			return output.toByteArray();
+
+		}
 	}
 
 	/**
 	 * Copies shorten url(or long one if url shrunking fails) to clipboard, notifies a user and terminates the programm
-	 * 
 	 */
-	private void copyUrlAndNotify(final String filename, final AccessTokenPair accessKeys) {
-		copyAndNotify = new Thread("copyAndNotify thread") {
+	private void copyUrlAndNotify(String filename, String uid) {
+		final String soundName = "/notify.mp3";
+		final String url = "http://dl.dropbox.com/u/" + uid + filename;
+		new Thread("copyAndNotify thread") {
 			@Override
 			public void run() {
-				String soundName = "/notify.mp3";
+				Thread.currentThread().setPriority(Thread.NORM_PRIORITY - 2);
 				try {
+					StringSelection selection = new StringSelection(URLshortener.shorten(url));
 					Player player = new Player(getClass().getResourceAsStream(soundName));
 
-					captureThread.join();
-					Thread.sleep(500);
-
-					StringSelection selection = new StringSelection(Dropbox.share(filename,
-							accessKeys));
+					latch.await();
 					Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, null);
-
 					player.play();
 					player.close();
-				} catch (JavaLayerException | InterruptedException | IOException e) {
+				} catch (JavaLayerException | InterruptedException e) {
 					showExceptionInfo(e);
 				}
 			}
-		};
-		copyAndNotify.setPriority(Thread.NORM_PRIORITY - 2);
-		copyAndNotify.start();
+		}.start();
+
 	}
 
-	private AccessTokenPair loadKeys(boolean doReauth) {
+	private final Map<String, String> loadKeys(boolean doReauth) {
 		final Configuration cfg = new Configuration(doReauth);
-		final Map<String, String> keys = cfg.getKeysMap();
-
-		String accessKey = keys.get("accessKey");
-		String accessSecret = keys.get("accessSecret");
-
-		return new AccessTokenPair(accessKey, accessSecret);
+		return cfg.getKeysMap();
 
 	}
 
 	public static void showExceptionInfo(Exception e) {
+		e.printStackTrace();
 		JOptionPane.showMessageDialog(null, e.toString() + " in " + e.getStackTrace()[0]);
+		throw new RuntimeException();
 	}
 
 }
